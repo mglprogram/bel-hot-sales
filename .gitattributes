@@ -1,0 +1,11 @@
+# Normalize line endings: keep LF in the repo regardless of the OS that committed.
+* text=auto eol=lf
+
+# Windows batch/PowerShell scripts should keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary
+*.xlsx binary
+*.skill binary
