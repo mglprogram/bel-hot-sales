@@ -23,15 +23,85 @@ Starting from the `总销售表` sheet of the workbook:
 
 ## Install
 
-Copy the skill folder into your skills directory:
+### Recommended: run the installer
 
-```bash
-cp -r bel-hot-sales ~/.agents/skills/
+It copies the skill to the right place, verifies the layout that skill discovery
+actually requires, and checks dependencies.
+
+**Windows (PowerShell):**
+
+```powershell
+git clone https://github.com/mglprogram/bel-hot-sales.git
+cd bel-hot-sales
+powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-Or install from the packaged `bel-hot-sales.skill` if you use a client that consumes skill bundles.
+**macOS / Linux:**
 
-Requires Python 3 with `openpyxl`.
+```bash
+git clone https://github.com/mglprogram/bel-hot-sales.git
+cd bel-hot-sales
+bash install.sh
+```
+
+Both scripts are re-runnable, so running them again updates an existing install.
+
+### Manual install
+
+Copy the folder to `~/.agents/skills/bel-hot-sales` (on Windows:
+`C:\Users\<you>\.agents\skills\bel-hot-sales`), then `pip install openpyxl`.
+
+### ⚠️ The one thing that usually goes wrong
+
+Discovery is **directory based** — there is no registry or config to update. That means the
+folder name and the layout have to be exactly right, and if they aren't, **nothing happens**:
+no error, the skill simply never loads.
+
+```
+~/.agents/skills/bel-hot-sales/     <- folder name must equal the `name:` in frontmatter
+├── SKILL.md                        <- must be at the ROOT of that folder
+├── scripts/bel_pipeline.py
+└── evals/evals.json
+```
+
+Two failure modes caused by how people usually download this:
+
+| How you got it | What you end up with | Fix |
+|---|---|---|
+| `git clone` | `bel-hot-sales/SKILL.md` ✅ | already correct |
+| **Download ZIP** | `bel-hot-sales-main/SKILL.md` ❌ | rename the folder to `bel-hot-sales` |
+| Copying the repo folder into skills/ | `skills/bel-hot-sales/bel-hot-sales/SKILL.md` ❌ | move the inner folder up one level |
+
+The installer exists mainly to make these two impossible.
+
+### `.skill` bundle
+
+If your client installs skills from a bundle instead of a directory, use
+`bel-hot-sales.skill` from the [releases page](../../releases) rather than the repo itself —
+the repo contains the unpacked folder, which is a different thing.
+
+### After installing
+
+Skills are resolved when a session starts, so **start a new session** before expecting the
+skill to load.
+
+## Deployment notes (locked-down machines)
+
+If you're moving this to a corporate machine, three things tend to bite:
+
+1. **Python may be absent.** `openpyxl` is the only dependency. Without Python the skill still
+   loads and the agent can follow `SKILL.md` and implement the logic itself — it just costs
+   more time than running the bundled script.
+2. **GitHub may be blocked.** `git clone` uses HTTPS on port 443. Downloading the ZIP from the
+   web UI often succeeds where cloning is filtered; the installer then handles the layout.
+3. **The proxy may be SOCKS5.** Git's credential stack (GCM / .NET) does **not** support
+   SOCKS5 proxies and fails with `ServicePointManager 不支持具有 socks5 方案的代理`. If you
+   set `HTTP_PROXY`/`HTTPS_PROXY` to a `socks5://` URL, either clear those variables for git
+   commands or point git at an HTTP proxy instead.
+
+Also worth knowing: the pipeline needs **write access to the output folder**, and if the target
+`.xlsx` is open in Excel the save fails with a `PermissionError` (Windows also leaves a `~$`
+lock file). The skill writes to a new `_v2` file in that case rather than overwriting.
 
 ## Usage
 
@@ -106,11 +176,16 @@ worth knowing before you act on the numbers:
 ```
 bel-hot-sales/
 ├── SKILL.md                 # skill definition: triggers, rules, traps
+├── install.ps1              # installer (Windows)
+├── install.sh               # installer (macOS / Linux)
 ├── scripts/
 │   └── bel_pipeline.py      # the pipeline
 └── evals/
     └── evals.json           # test prompts + assertions
 ```
 
-The eval fixture workbook (~6 MB) is not committed; see `evals/evals.json` for the expected
-input shape.
+The packaged `bel-hot-sales.skill` bundle is published under
+[Releases](../../releases), not committed here, so the repo stays diff-friendly.
+
+The eval fixture workbook (~6 MB) is not committed either; see `evals/evals.json` for the
+expected input shape.
